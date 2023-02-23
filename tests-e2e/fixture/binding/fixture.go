@@ -136,3 +136,72 @@ func HaveComponentDeploymentCondition(expected metav1.Condition) matcher.GomegaM
 
 	}, BeTrue())
 }
+
+// BuildSnapshotEnvironmentBindingResource builds the SnapshotEnvironmentBinding CR
+func BuildSnapshotEnvironmentBindingResource(name, appName, envName, snapShotName string, replica int, componentNames []string) appstudiosharedv1.SnapshotEnvironmentBinding {
+	// Create SnapshotEnvironmentBinding CR.
+	binding := appstudiosharedv1.SnapshotEnvironmentBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: fixture.GitOpsServiceE2ENamespace,
+			Labels: map[string]string{
+				"appstudio.application": appName,
+				"appstudio.environment": envName,
+			},
+		},
+		Spec: appstudiosharedv1.SnapshotEnvironmentBindingSpec{
+			Application: appName,
+			Environment: envName,
+			Snapshot:    snapShotName,
+		},
+	}
+
+	components := []appstudiosharedv1.BindingComponent{}
+	for _, name := range componentNames {
+		components = append(components, appstudiosharedv1.BindingComponent{
+			Name:          name,
+			Configuration: appstudiosharedv1.BindingComponentConfiguration{Replicas: replica},
+		})
+	}
+
+	binding.Spec.Components = components
+	return binding
+}
+
+// BuildSnapshotEnvironmentBindingStatus builds the status fields that needs to be updated
+// for the SnapshotEnvironmentBinding CR
+func BuildSnapshotEnvironmentBindingStatus(components []appstudiosharedv1.BindingComponent, url,
+	branch, commitID string, path []string) appstudiosharedv1.SnapshotEnvironmentBindingStatus {
+
+	// Create SnapshotEnvironmentBindingStatus object.
+	status := appstudiosharedv1.SnapshotEnvironmentBindingStatus{}
+
+	var componentStatus []appstudiosharedv1.BindingComponentStatus
+
+	for i, component := range components {
+		componentStatus = append(componentStatus, appstudiosharedv1.BindingComponentStatus{
+			Name: component.Name,
+			GitOpsRepository: appstudiosharedv1.BindingComponentGitOpsRepository{
+				URL: url, Branch: branch, Path: path[i], GeneratedResources: []string{}, CommitID: commitID,
+			},
+		})
+	}
+
+	status.Components = componentStatus
+	return status
+}
+
+// BuildAndUpdateBindingStatus builds and updates the status field of SnapshotEnvironmentBinding CR
+func BuildAndUpdateBindingStatus(components []appstudiosharedv1.BindingComponent, url,
+	branch, commitID string, path []string, binding *appstudiosharedv1.SnapshotEnvironmentBinding) error {
+
+	By(fmt.Sprintf("updating Status field of SnapshotEnvironmentBindingResource for '%s' of '%s' in '%v'", url, branch, path))
+
+	return UpdateStatusWithFunction(binding, func(bindingStatus *appstudiosharedv1.SnapshotEnvironmentBindingStatus) {
+
+		// Update the binding status
+		*bindingStatus = BuildSnapshotEnvironmentBindingStatus(components,
+			url, branch, commitID, path)
+
+	})
+}

@@ -1,21 +1,19 @@
 package gitopsdeployment
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	matcher "github.com/onsi/gomega/types"
-
-	"context"
-
-	"github.com/redhat-appstudio/managed-gitops/tests-e2e/fixture"
-	k8sFixture "github.com/redhat-appstudio/managed-gitops/tests-e2e/fixture/k8s"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	managedgitopsv1alpha1 "github.com/redhat-appstudio/managed-gitops/backend-shared/apis/managed-gitops/v1alpha1"
+	"github.com/redhat-appstudio/managed-gitops/tests-e2e/fixture"
+	k8sFixture "github.com/redhat-appstudio/managed-gitops/tests-e2e/fixture/k8s"
 )
 
 // HaveLabel will succeed if the GitOpsDeployment contains the specified label, and fail otherwise.
@@ -326,4 +324,28 @@ func UpdateDeploymentWithFunction(gitopsDeployment *managedgitopsv1alpha1.GitOps
 		return err
 	})
 
+}
+
+// BuildGitOpsDeploymentResource builds a GitOpsDeployment with 'opinionated' default values, which is self-contained to
+// the GitGitOpsServiceE2ENamespace. This makes it easy to clean up after tests using EnsureCleanSlate.
+// - Defaults to creation in GitOpsServiceE2ENamespace
+// - Defaults to deployment of K8s resources to GitOpsServiceE2ENamespace
+func BuildGitOpsDeploymentResource(name, repoURL, path, deploymentSpecType string) managedgitopsv1alpha1.GitOpsDeployment {
+
+	gitOpsDeploymentResource := managedgitopsv1alpha1.GitOpsDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: fixture.GitOpsServiceE2ENamespace,
+		},
+		Spec: managedgitopsv1alpha1.GitOpsDeploymentSpec{
+			Source: managedgitopsv1alpha1.ApplicationSource{
+				RepoURL: repoURL,
+				Path:    path,
+			},
+			Destination: managedgitopsv1alpha1.ApplicationDestination{},
+			Type:        deploymentSpecType,
+		},
+	}
+
+	return gitOpsDeploymentResource
 }
