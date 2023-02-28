@@ -1,0 +1,26 @@
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-1
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run
+  revisionID: main
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-2
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run
+  revisionID: replicas-2
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-3
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run
+  revisionID: replicas-3

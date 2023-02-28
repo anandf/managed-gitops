@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: gitops-service-argocd
+  namespace: gitops-service-argocd
+spec:
+  resourceHealthChecks:
+    - group: apps/v1
+      kind: Deployment
+      check: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = "Custom health check to test Sync operation"
+        return hs
