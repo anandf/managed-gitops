@@ -28,12 +28,9 @@ status:
       status: OutOfSync
       version: v1
     - group: apps
-      health:
-        status: Missing
       kind: Deployment
       name: guestbook-ui
       namespace: gitops-service-e2e
-      status: OutOfSync
       version: v1
   sync:
     revision: d390b220553954a12a19b5133ad2313e6b60691e
@@ -54,6 +51,32 @@ spec:
 status:
   health:
     status: Missing
+  operationState:
+    message: Operation terminated
+    operation:
+      initiatedBy:
+        username: admin
+      retry: {}
+      sync:
+        revision: d390b220553954a12a19b5133ad2313e6b60691e
+        syncStrategy:
+          hook: {}
+    phase: Failed
+    syncResult:
+      resources:
+        - group: apps
+          hookPhase: Succeeded
+          hookType: PreSync
+          kind: Deployment
+          message: Custom health check to test Sync operation
+          name: guestbook-ui
+          namespace: gitops-service-e2e
+          syncPhase: PreSync
+          version: v1
+      revision: d390b220553954a12a19b5133ad2313e6b60691e
+      source:
+        path: guestbook
+        repoURL: https://github.com/managed-gitops-test-data/deployment-presync-hook
   resources:
     - health:
         status: Missing
@@ -63,15 +86,16 @@ status:
       status: OutOfSync
       version: v1
     - group: apps
-      health:
-        status: Missing
+      hook: true
       kind: Deployment
       name: guestbook-ui
       namespace: gitops-service-e2e
-      status: OutOfSync
+      requiresPruning: true
       version: v1
   sourceType: Directory
-  summary: {}
+  summary:
+    images:
+      - nginxinc/nginx-unprivileged:latest
   sync:
     comparedTo:
       destination:
@@ -82,3 +106,5 @@ status:
         repoURL: https://github.com/managed-gitops-test-data/deployment-presync-hook
     revision: d390b220553954a12a19b5133ad2313e6b60691e
     status: OutOfSync
+---
+

@@ -1,10 +1,10 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestSuite
 testDirs:
-  - .
+  - temp
 suppress:
   - events
-skipDelete: false
+skipDelete: true
 timeout: 20
 parallel: 1
 reportFormat: JSON
