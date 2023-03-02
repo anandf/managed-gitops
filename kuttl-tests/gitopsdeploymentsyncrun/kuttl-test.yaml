@@ -4,7 +4,6 @@ testDirs:
   - temp
 suppress:
   - events
-skipDelete: true
 timeout: 20
 parallel: 1
 reportFormat: JSON
