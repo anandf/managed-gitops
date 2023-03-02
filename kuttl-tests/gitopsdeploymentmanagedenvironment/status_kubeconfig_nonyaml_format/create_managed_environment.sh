@@ -1,5 +1,5 @@
 NAMESPACE=gitops-service-e2e
-SECRET_NAME=my-managed-env-secret
+SECRET_NAME=non-yaml-secret
 SERVER_URL=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
 
 

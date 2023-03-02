@@ -8,6 +8,7 @@ spec:
   credentialsSecret: my-managed-env-secret
 status:
   conditions:
-    - reason: UnableToLocateContext
+    - message: "unable to parse kubeconfig data: yaml: mapping values are not allowed in this context"
+      reason: UnableToParseKubeconfigData
       status: "False"
       type: ConnectionInitializationSucceeded

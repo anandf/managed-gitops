@@ -1,10 +1,6 @@
 NAMESPACE=gitops-service-e2e
-SECRET_NAME=my-managed-env-secret
+SECRET_NAME=empty-kubeconfig-secret
 SERVER_URL=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
-KUBECONFIG_FILE=$HOME/.kube/config
-if [[ ! -z "$KUBECONFIG" ]]; then
-  KUBECONFIG_FILE=$KUBECONFIG
-fi
 
 echo "apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n" > ./kubeconfig.txt
 

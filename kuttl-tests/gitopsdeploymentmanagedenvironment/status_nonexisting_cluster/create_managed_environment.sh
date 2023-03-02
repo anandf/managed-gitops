@@ -1,5 +1,5 @@
 NAMESPACE=gitops-service-e2e
-SECRET_NAME=my-managed-env-secret
+SECRET_NAME=non-existing-cluster-secret
 SERVER_URL="https://api2.fake-e2e-test-data.origin-ci-int-gce.dev.rhcloud.com:6443"
 KUBECONFIG_FILE=$HOME/.kube/config
 if [[ ! -z "$KUBECONFIG" ]]; then

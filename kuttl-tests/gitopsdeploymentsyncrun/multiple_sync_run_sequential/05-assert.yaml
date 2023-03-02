@@ -218,7 +218,7 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   gitopsDeploymentName: gitops-depl-sync-run-multiple-seq
-  revisionID: main
+  revisionID: replicas-2
 ---
 apiVersion: managed-gitops.redhat.com/v1alpha1
 kind: GitOpsDeploymentSyncRun
@@ -227,6 +227,6 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   gitopsDeploymentName: gitops-depl-sync-run-multiple-seq
-  revisionID: main
+  revisionID: replicas-3
 ---
 

@@ -8,7 +8,6 @@ spec:
   credentialsSecret: my-managed-env-secret
 status:
   conditions:
-    - message: ""
-      reason: Succeeded
-      status: "True"
+    - reason: UnableToLocateContext
+      status: "False"
       type: ConnectionInitializationSucceeded

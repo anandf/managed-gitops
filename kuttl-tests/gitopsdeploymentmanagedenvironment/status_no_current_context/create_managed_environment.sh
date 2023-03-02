@@ -1,5 +1,5 @@
 NAMESPACE=gitops-service-e2e
-SECRET_NAME=my-managed-env-secret
+SECRET_NAME=no-current-context-secret
 SERVER_URL=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
 KUBECONFIG_FILE=$HOME/.kube/config
 if [[ ! -z "$KUBECONFIG" ]]; then
