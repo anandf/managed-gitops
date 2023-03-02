@@ -1,7 +1,7 @@
 apiVersion: managed-gitops.redhat.com/v1alpha1
 kind: GitOpsDeployment
 metadata:
-  name: gitops-depl-sync-run
+  name: gitops-depl-sync-run-manual
   namespace: gitops-service-e2e
 spec:
   source:
@@ -219,3 +219,14 @@ kind: Route
 metadata:
   name: component-b
   namespace: gitops-service-e2e
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-manual
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run-manual
+  revisionID: main
+---
+

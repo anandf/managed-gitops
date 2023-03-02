@@ -1,7 +1,7 @@
 apiVersion: managed-gitops.redhat.com/v1alpha1
 kind: GitOpsDeployment
 metadata:
-  name: gitops-depl-sync-run
+  name: gitops-depl-sync-run-multiple-aao
   namespace: gitops-service-e2e
 spec:
   source:
@@ -201,3 +201,30 @@ status:
   readyReplicas: 1
   replicas: 1
   updatedReplicas: 1
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-multiple-aao-1
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run-multiple-aao
+  revisionID: main
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-multiple-aao-2
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run-multiple-aao
+  revisionID: replicas-2
+---
+apiVersion: managed-gitops.redhat.com/v1alpha1
+kind: GitOpsDeploymentSyncRun
+metadata:
+  name: test-syncrun-multiple-aao-3
+  namespace: gitops-service-e2e
+spec:
+  gitopsDeploymentName: gitops-depl-sync-run-multiple-aao
+  revisionID: replicas-3
