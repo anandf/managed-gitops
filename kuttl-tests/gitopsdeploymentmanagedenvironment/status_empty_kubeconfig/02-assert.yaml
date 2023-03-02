@@ -5,7 +5,7 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   allowInsecureSkipTLSVerify: true
-  credentialsSecret: my-managed-env-secret
+  credentialsSecret: empty-kubeconfig-secret
 status:
   conditions:
     - message: "unable to parse kubeconfig data: yaml: mapping values are not allowed in this context"

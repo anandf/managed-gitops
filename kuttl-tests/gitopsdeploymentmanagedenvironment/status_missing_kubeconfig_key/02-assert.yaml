@@ -5,7 +5,7 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   allowInsecureSkipTLSVerify: true
-  credentialsSecret: my-managed-env-secret
+  credentialsSecret: missing-kubeconfig-secret
 status:
   conditions:
     - message: missing kubeConfig field in Secret

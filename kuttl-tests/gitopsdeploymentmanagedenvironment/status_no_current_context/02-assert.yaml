@@ -5,7 +5,7 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   allowInsecureSkipTLSVerify: true
-  credentialsSecret: my-managed-env-secret
+  credentialsSecret: no-current-context-secret
 status:
   conditions:
     - reason: UnableToLocateContext

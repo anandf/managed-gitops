@@ -5,7 +5,7 @@ metadata:
   namespace: gitops-service-e2e
 spec:
   allowInsecureSkipTLSVerify: true
-  credentialsSecret: my-managed-env-secret
+  credentialsSecret: non-yaml-secret
 status:
   conditions:
     - message:
