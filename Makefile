@@ -277,9 +277,16 @@ ensure-workload-gitops-ns-exists:
 
 
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
+
+ifeq (, $(shell which kustomize))
+  KUSTOMIZE=$(shell pwd)/bin/kustomize
+else
+  KUSTOMIZE=$(shell which kustomize)
+endif
 kustomize: ## Download kustomize locally if necessary.
+ifeq (, $(shell which kustomize))
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.5)
+endif
 
 # go-get-tool will 'go install' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
