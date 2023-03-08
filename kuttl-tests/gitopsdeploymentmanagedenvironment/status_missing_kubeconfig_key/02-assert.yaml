@@ -8,7 +8,7 @@ spec:
   credentialsSecret: missing-kubeconfig-secret
 status:
   conditions:
-    - message: missing kubeConfig field in Secret
+    - message: missing kubeconfig field in Secret
       reason: MissingKubeConfigField
       status: "False"
       type: ConnectionInitializationSucceeded
