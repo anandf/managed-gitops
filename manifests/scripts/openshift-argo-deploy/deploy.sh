@@ -22,8 +22,13 @@ while ! kubectl get namespace gitops-service-argocd &> /dev/null ; do
 done
 echo "OK"
 
+TARGET_NAMESPACE=openshift-operators
+if [[ "$CREATE_SUBSCRIPTION" == "false" ]]; then
+  TARGET_NAMESPACE=gitops-operator-system
+fi
+
 echo -n "Checking for gitops operator controller pod to be created and running before proceeding with the next step:"
-while ! kubectl get pods -n openshift-operators | grep gitops-operator-controller-manager | grep Running &> /dev/null ; do
+while ! kubectl get pods -n "${TARGET_NAMESPACE}" | grep gitops-operator-controller-manager | grep Running &> /dev/null ; do
   echo -n .
   sleep 1
 done
