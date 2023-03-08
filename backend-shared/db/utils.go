@@ -278,7 +278,7 @@ func generateSampleData() (ClusterCredentials, ManagedEnvironment, GitopsEngineC
 
 	gitopsEngineInstance := GitopsEngineInstance{
 		Gitopsengineinstance_id: "test-fake-engine-instance-id",
-		Namespace_name:          "test-fake-namespace",
+		Namespace_name:          "argocd",
 		Namespace_uid:           "test-fake-namespace-914",
 		EngineCluster_id:        gitopsEngineCluster.Gitopsenginecluster_id,
 	}
@@ -460,8 +460,8 @@ func SetupForTestingDBGinkgo() error {
 	for _, managedEnvironment := range managedEnvironments {
 		if strings.HasPrefix(managedEnvironment.Managedenvironment_id, "test-") {
 			rowsAffected, err := dbq.DeleteManagedEnvironmentById(ctx, managedEnvironment.Managedenvironment_id)
-			Expect(rowsAffected).Should(Equal(1))
 			Expect(err).To(BeNil())
+			Expect(rowsAffected).Should(Equal(1))
 		}
 	}
 

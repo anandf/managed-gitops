@@ -15,16 +15,14 @@ spec:
       value: "{{ revision }}"
     - name: output-image
       value: 'quay.io/redhat-appstudio/gitops-service:{{ revision }}'
-    - name: path-context
-      value: .
-    - name: dockerfile
-      value: Dockerfile
     - name: infra-deployment-update-script
       value: |
-        sed -i -E 's/[0-9a-f]{40}/$(params.revision)/g' components/gitops/staging/kustomization.yaml
+        sed -i -E 's/[0-9a-f]{40}/$(params.revision)/g' components/gitops/staging/base/kustomization.yaml
+        sed -i -E 's/[0-9a-f]{40}/$(params.revision)/g' components/gitops/production/base/kustomization.yaml
+        sed -i -E 's/[0-9a-f]{40}/$(params.revision)/g' components/gitops/development/kustomization.yaml
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
   workspaces:
     - name: workspace
       volumeClaimTemplate:

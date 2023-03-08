@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/redhat-appstudio/managed-gitops/backend-shared/util/tests"
+	"github.com/redhat-appstudio/managed-gitops/backend/eventloop/shared_resource_loop"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/rest"
@@ -284,7 +285,7 @@ var _ = Describe("DB Reconciler Test", func() {
 						Namespace: "test-k8s-namespace",
 					},
 					Type:       "managed-gitops.redhat.com/managed-environment",
-					StringData: map[string]string{"kubeconfig": "abc"},
+					StringData: map[string]string{shared_resource_loop.KubeconfigKey: "abc"},
 				}
 				err = k8sClient.Create(context.Background(), secretCr)
 				Expect(err).To(BeNil())
@@ -451,7 +452,15 @@ var _ = Describe("DB Reconciler Test", func() {
 				err = dbq.CreateAPICRToDatabaseMapping(ctx, &apiCRToDatabaseMappingDb)
 				Expect(err).To(BeNil())
 
-				_, _, _, gitopsEngineInstance, _, err := db.CreateSampleData(dbq)
+				_, _, engineCluster, _, _, err := db.CreateSampleData(dbq)
+				Expect(err).To(BeNil())
+				gitopsEngineInstance := &db.GitopsEngineInstance{
+					Gitopsengineinstance_id: "test-fake-instance-id",
+					Namespace_name:          "gitops-service-argocd",
+					Namespace_uid:           "test-fake-instance-namespace-914",
+					EngineCluster_id:        engineCluster.Gitopsenginecluster_id,
+				}
+				err = dbq.CreateGitopsEngineInstance(ctx, gitopsEngineInstance)
 				Expect(err).To(BeNil())
 
 				// Create DB entry for Application
@@ -560,9 +569,16 @@ var _ = Describe("DB Reconciler Test", func() {
 
 				By("Create required DB entries.")
 
-				_, _, _, gitopsEngineInstance, _, err := db.CreateSampleData(dbq)
+				_, _, engineCluster, _, _, err := db.CreateSampleData(dbq)
 				Expect(err).To(BeNil())
-
+				gitopsEngineInstance := &db.GitopsEngineInstance{
+					Gitopsengineinstance_id: "test-fake-instance-id",
+					Namespace_name:          "test-k8s-namespace",
+					Namespace_uid:           "test-fake-instance-namespace-914",
+					EngineCluster_id:        engineCluster.Gitopsenginecluster_id,
+				}
+				err = dbq.CreateGitopsEngineInstance(ctx, gitopsEngineInstance)
+				Expect(err).To(BeNil())
 				// Create DB entry for ClusterUser
 				clusterUserDb = &db.ClusterUser{
 					Clusteruser_id: "test-repocred-user-id",
@@ -755,7 +771,16 @@ var _ = Describe("DB Reconciler Test", func() {
 
 				By("Create required DB entries.")
 
-				_, managedEnvironment, _, gitopsEngineInstance, _, err := db.CreateSampleData(dbq)
+				_, managedEnvironment, engineCluster, _, _, err := db.CreateSampleData(dbq)
+				Expect(err).To(BeNil())
+
+				gitopsEngineInstance := &db.GitopsEngineInstance{
+					Gitopsengineinstance_id: "test-fake-instance-id",
+					Namespace_name:          "test-k8s-namespace",
+					Namespace_uid:           "test-fake-instance-namespace-914",
+					EngineCluster_id:        engineCluster.Gitopsenginecluster_id,
+				}
+				err = dbq.CreateGitopsEngineInstance(ctx, gitopsEngineInstance)
 				Expect(err).To(BeNil())
 
 				// Create DB entry for Application

@@ -293,10 +293,72 @@ func HaveReconciledState(reconciledState managedgitopsv1alpha1.ReconciledState) 
 	}, BeTrue())
 }
 
+// HasNonNilDeletionTimestamp checks whether the GitOpsDeployment has a non-nil deletion timestamp.
+func HasNonNilDeletionTimestamp() matcher.GomegaMatcher {
+	return WithTransform(func(gitopsDepl managedgitopsv1alpha1.GitOpsDeployment) bool {
+		config, err := fixture.GetE2ETestUserWorkspaceKubeConfig()
+		Expect(err).To(BeNil())
+
+		k8sClient, err := fixture.GetKubeClient(config)
+		if err != nil {
+			fmt.Println(k8sFixture.K8sClientError, err)
+			return false
+		}
+
+		err = k8sClient.Get(context.Background(), client.ObjectKeyFromObject(&gitopsDepl), &gitopsDepl)
+		if err != nil {
+			fmt.Println(k8sFixture.K8sClientError, err)
+			return false
+		}
+
+		return gitopsDepl.DeletionTimestamp != nil
+	}, BeTrue())
+}
+
+// UpdateDeploymentWithFunction will update the GitOpsDeployment by:
+// - retrieving the latest version of the GitOpsDeployment from the cluster
+// - applying the mutation function
+// - calling update to update the cluster object with the mutated version of the object.
+// On fail, it will be reattempted until it succeeds.
 func UpdateDeploymentWithFunction(gitopsDeployment *managedgitopsv1alpha1.GitOpsDeployment,
 	mutationFn func(*managedgitopsv1alpha1.GitOpsDeployment)) error {
 
 	GinkgoWriter.Printf("Updating GitOpsDeployment for '%v'\n", gitopsDeployment.ObjectMeta)
+	config, err := fixture.GetE2ETestUserWorkspaceKubeConfig()
+	Expect(err).To(BeNil())
+
+	k8sClient, err := fixture.GetKubeClient(config)
+	if err != nil {
+		fmt.Println(k8sFixture.K8sClientError, err)
+		return err
+	}
+
+	return k8sFixture.UntilSuccess(k8sClient, func(k8sClient client.Client) error {
+
+		// Retrieve the latest version of the GitOpsDeployment resource
+		err := k8sFixture.Get(gitopsDeployment, k8sClient)
+		if err != nil {
+			return err
+		}
+
+		// Call the mutation function, to change the deployment
+		mutationFn(gitopsDeployment)
+
+		// Attempt to update the object with the change made by the mutation function
+		err = k8sFixture.Update(gitopsDeployment, k8sClient)
+
+		// Report back the error, if we hit one
+		return err
+	})
+
+}
+
+// UpdateDeploymentStatusWithFunction works like UpdateDeploymentWithFunction, but updates the
+// status field of the GitOpsDeployment.
+func UpdateDeploymentStatusWithFunction(gitopsDeployment *managedgitopsv1alpha1.GitOpsDeployment,
+	mutationFn func(*managedgitopsv1alpha1.GitOpsDeployment)) error {
+
+	GinkgoWriter.Printf("Updating GitOpsDeployment status for '%v'\n", gitopsDeployment.ObjectMeta)
 	config, err := fixture.GetE2ETestUserWorkspaceKubeConfig()
 	Expect(err).To(BeNil())
 

@@ -28,6 +28,7 @@ import (
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -106,7 +107,7 @@ func (a *applicationEventLoopRunner_Action) applicationEventRunner_handleDeploym
 		}
 	}
 
-	if gitopsDeployment != nil {
+	if !isGitOpsDeploymentDeleted(gitopsDeployment) {
 		if gitopsDeployment.Spec.Source.Path == "" {
 			userError := managedgitopsv1alpha1.GitOpsDeploymentUserError_PathIsRequired
 			return signalledShutdown_false, nil, nil, deploymentModifiedResult_Failed, gitopserrors.NewUserDevError(userError, err)
@@ -117,7 +118,7 @@ func (a *applicationEventLoopRunner_Action) applicationEventRunner_handleDeploym
 	}
 
 	// Update the list of GitOpsDeployments that we use to generate metrics
-	if gitopsDeployment != nil {
+	if !isGitOpsDeploymentDeleted(gitopsDeployment) {
 		metrics.AddOrUpdateGitOpsDeployment(deplName, deplNamespace, string(gitopsDeplNamespace.UID))
 	} else {
 		metrics.RemoveGitOpsDeployment(deplName, deplNamespace, string(gitopsDeplNamespace.UID))
@@ -147,7 +148,7 @@ func (a *applicationEventLoopRunner_Action) applicationEventRunner_handleDeploym
 
 		dtam := deplToAppMappingList[idx]
 
-		if gitopsDeployment != nil && dtam.Deploymenttoapplicationmapping_uid_id == string(gitopsDeployment.UID) {
+		if !isGitOpsDeploymentDeleted(gitopsDeployment) && dtam.Deploymenttoapplicationmapping_uid_id == string(gitopsDeployment.UID) {
 			currentDeplToAppMapping = &dtam
 		} else {
 			oldDeplToAppMappings = append(oldDeplToAppMappings, dtam)
@@ -163,7 +164,7 @@ func (a *applicationEventLoopRunner_Action) applicationEventRunner_handleDeploym
 		// - AND, the CR no longer exists
 
 		var deleteErr gitopserrors.UserError
-		successfulCleanup, deleteErr = a.handleDeleteGitOpsDeplEvent(ctx, clusterUser, dbutil.GetGitOpsEngineSingleInstanceNamespace(),
+		successfulCleanup, deleteErr = a.handleDeleteGitOpsDeplEvent(ctx, gitopsDeployment, clusterUser, dbutil.GetGitOpsEngineSingleInstanceNamespace(),
 			&oldDeplToAppMappings, dbQueries)
 		if deleteErr != nil {
 			return signalledShutdown_false, nil, nil, deploymentModifiedResult_Failed, deleteErr
@@ -172,7 +173,7 @@ func (a *applicationEventLoopRunner_Action) applicationEventRunner_handleDeploym
 
 	// 5) Finally, handle the resource event, based on whether it is a create, update, or no-op
 
-	if gitopsDeployment != nil {
+	if !isGitOpsDeploymentDeleted(gitopsDeployment) {
 		// If the GitOpsDeployment resource exists in the namespace
 
 		if currentDeplToAppMapping == nil {
@@ -346,6 +347,7 @@ func (a applicationEventLoopRunner_Action) handleNewGitOpsDeplEvent(ctx context.
 
 	ctx = sharedutil.RemoveKCPClusterFromContext(ctx)
 	waitForOperation := !a.testOnlySkipCreateOperation // if it's for a unit test, we don't wait for the operation
+
 	k8sOperation, dbOperation, err := operations.CreateOperation(ctx, waitForOperation, dbOperationInput,
 		clusterUser.Clusteruser_id, operationNamespace, dbQueries, gitopsEngineClient, a.log)
 	if err != nil {
@@ -368,7 +370,7 @@ func (a applicationEventLoopRunner_Action) handleNewGitOpsDeplEvent(ctx context.
 // Returns:
 // - true if the goroutine responsible for this application can shutdown (e.g. because the GitOpsDeployment no longer exists, so no longer needs to be processed), false otherwise.
 // - error is non-nil, if an error occurred
-func (a applicationEventLoopRunner_Action) handleDeleteGitOpsDeplEvent(ctx context.Context, clusterUser *db.ClusterUser,
+func (a applicationEventLoopRunner_Action) handleDeleteGitOpsDeplEvent(ctx context.Context, gitopsDepl *managedgitopsv1alpha1.GitOpsDeployment, clusterUser *db.ClusterUser,
 	operationNamespace string, deplToAppMappingList *[]db.DeploymentToApplicationMapping,
 	dbQueries db.ApplicationScopedQueries) (bool, gitopserrors.UserError) {
 
@@ -412,12 +414,61 @@ func (a applicationEventLoopRunner_Action) handleDeleteGitOpsDeplEvent(ctx conte
 	}
 
 	if allErrors == nil {
+		if isGitOpsDeploymentDeleted(gitopsDepl) {
+			// remove the finalizer if all the dependencies are cleaned up
+			if err := removeFinalizerIfExist(ctx, a.workspaceClient, gitopsDepl, managedgitopsv1alpha1.DeletionFinalizer); err != nil {
+				a.log.Error(err, "failed to remove the deletion finalizer from GitOpsDeployment", "name", gitopsDepl.Name, "namespace", gitopsDepl.Namespace)
+				return false, gitopserrors.NewDevOnlyError(err)
+			}
+		}
 		return signalShutdown, nil
 
 	} else {
 		return signalShutdown, gitopserrors.NewDevOnlyError(allErrors)
 	}
 
+}
+
+func removeFinalizerIfExist(ctx context.Context, k8sClient client.Client, gitopsDepl *managedgitopsv1alpha1.GitOpsDeployment, finalizer string) error {
+	if gitopsDepl == nil {
+		return nil
+	}
+
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		err := k8sClient.Get(ctx, client.ObjectKeyFromObject(gitopsDepl), gitopsDepl)
+		if err != nil {
+			if apierr.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		finalizers := removeItemFromSlice(finalizer, gitopsDepl.Finalizers)
+		if len(finalizers) != len(gitopsDepl.Finalizers) {
+			gitopsDepl.Finalizers = finalizers
+			return k8sClient.Update(ctx, gitopsDepl)
+		}
+
+		return nil
+	})
+}
+
+// we consider the GitOpsDeployment as deleted if:
+// 1. the GitOpsDeployment object is not found.
+// 2. the GitOpsDeployment is under deletion and the deletiontimestamp is set.
+func isGitOpsDeploymentDeleted(gitopsDepl *managedgitopsv1alpha1.GitOpsDeployment) bool {
+	return gitopsDepl == nil || gitopsDepl.DeletionTimestamp != nil
+}
+
+func removeItemFromSlice(item string, items []string) []string {
+	result := []string{}
+	for _, i := range items {
+		if i != item {
+			result = append(result, i)
+		}
+	}
+
+	return result
 }
 
 // Note: this function will return a nil ManagedEnvironment and/or GitOpsEngineInstance if the ManagedEnvironment
@@ -624,6 +675,7 @@ func (a applicationEventLoopRunner_Action) handleUpdatedGitOpsDeplEvent(ctx cont
 
 	ctx = sharedutil.RemoveKCPClusterFromContext(ctx)
 	waitForOperation := !a.testOnlySkipCreateOperation // if it's for a unit test, we don't wait for the operation
+
 	k8sOperation, dbOperation, err := operations.CreateOperation(ctx, waitForOperation, dbOperationInput, clusterUser.Clusteruser_id,
 		operationNamespace, dbQueries, gitopsEngineClient, log)
 	if err != nil {

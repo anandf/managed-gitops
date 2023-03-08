@@ -617,6 +617,88 @@ var _ = Describe("GitOpsDeployment E2E tests", func() {
 			expectAllResourcesToBeDeleted(expectedResourceStatusList)
 		})
 
+		It("Checks whether the GitOpsDeployment can be deleted in the presence of a finalizer", func() {
+			Expect(fixture.EnsureCleanSlate()).To(Succeed())
+
+			By("creating a new GitOpsDeployment resource with the deletion finalizer")
+			gitOpsDeploymentResource := buildGitOpsDeploymentResource("gitops-depl-test-status",
+				"https://github.com/redhat-appstudio/managed-gitops", "resources/test-data/sample-gitops-repository/environments/overlays/dev",
+				managedgitopsv1alpha1.GitOpsDeploymentSpecType_Automated)
+
+			gitOpsDeploymentResource.Finalizers = append(gitOpsDeploymentResource.Finalizers, managedgitopsv1alpha1.DeletionFinalizer)
+
+			k8sClient, err := fixture.GetE2ETestUserWorkspaceKubeClient()
+			Expect(err).To(Succeed())
+
+			err = k8s.Create(&gitOpsDeploymentResource, k8sClient)
+			Expect(err).To(Succeed())
+
+			By("populating the resource list")
+
+			expectedResourceStatusList := []managedgitopsv1alpha1.ResourceStatus{
+				{
+					Group:     "",
+					Version:   "v1",
+					Kind:      "ConfigMap",
+					Namespace: fixture.GitOpsServiceE2ENamespace,
+					Name:      "environment-config-map",
+					Status:    managedgitopsv1alpha1.SyncStatusCodeSynced,
+				},
+			}
+			expectedResourceStatusList = append(expectedResourceStatusList, getResourceStatusList_GitOpsRepositoryTemplateRepo("component-a")...)
+			expectedResourceStatusList = append(expectedResourceStatusList, getResourceStatusList_GitOpsRepositoryTemplateRepo("component-b")...)
+
+			Eventually(gitOpsDeploymentResource, ArgoCDReconcileWaitTime, "1s").Should(
+				SatisfyAll(
+					gitopsDeplFixture.HaveSyncStatusCode(managedgitopsv1alpha1.SyncStatusCodeSynced),
+					gitopsDeplFixture.HaveHealthStatusCode(managedgitopsv1alpha1.HeathStatusCodeHealthy),
+					gitopsDeplFixture.HaveResources(expectedResourceStatusList),
+				),
+			)
+
+			// We add a finalizer to one of the resources to prevent a race condition where the GitOpsDeployment and
+			// all the dependent resources might get deleted before the test can check if the finalizer has prevented the deletion.
+			testFinalizer := "kubernetes"
+			resStatus := expectedResourceStatusList[0]
+
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resStatus.Name,
+					Namespace: resStatus.Namespace,
+				},
+			}
+
+			err = k8s.UpdateWithoutConflict(cm, k8sClient, func(o client.Object) {
+				o.SetFinalizers([]string{testFinalizer})
+			})
+			Expect(err).To(BeNil())
+
+			By("delete the GitOpsDeployment resource")
+
+			err = k8sClient.Delete(ctx, &gitOpsDeploymentResource)
+			Expect(err).To(Succeed())
+
+			By("verify if the finalizer has prevented the GitOpsDeployment from deletion")
+			err = k8s.Get(&gitOpsDeploymentResource, k8sClient)
+			Expect(err).To(BeNil())
+
+			Eventually(gitOpsDeploymentResource, "60s", "1s").Should(gitopsDeplFixture.HasNonNilDeletionTimestamp())
+
+			// check if the GitOps Service has not removed the finalizer before the dependent resources are deleted.
+			Consistently(&gitOpsDeploymentResource, "30s", "1s").Should(k8s.ExistByName(k8sClient))
+
+			// Remove the test finalizer and verify if all the dependent resources are deleted
+			err = k8s.UpdateWithoutConflict(cm, k8sClient, func(o client.Object) {
+				o.SetFinalizers([]string{})
+			})
+			Expect(err).To(BeNil())
+
+			expectAllResourcesToBeDeleted(expectedResourceStatusList)
+
+			By("verify if the GitOpsDeployment is deleted after all the dependencies are removed")
+			Eventually(&gitOpsDeploymentResource, "30s", "1s").Should(k8s.NotExist(k8sClient))
+		})
+
 		It("Checks for failure of deployment when an invalid input is provided", func() {
 
 			Expect(fixture.EnsureCleanSlate()).To(Succeed())
