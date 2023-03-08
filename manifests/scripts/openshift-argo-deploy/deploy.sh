@@ -6,8 +6,13 @@ SCRIPTPATH="$(
 )"
 
 # A simple script for setting up Argo CD via OpenShift GitOps, on Argo CD
-
-kubectl apply -f $SCRIPTPATH/openshift-gitops-subscription.yaml
+CREATE_SUBSCRIPTION=${CREATE_SUBSCRIPTION:-true}
+if [[ "$CREATE_SUBSCRIPTION" == "false" ]]; then
+  echo "skipping subscription creation"
+else
+  echo "creating subscription"
+  kubectl apply -f $SCRIPTPATH/openshift-gitops-subscription.yaml
+fi
 
 kubectl create namespace gitops-service-argocd 2> /dev/null || true
 echo -n "Waiting for namespace to exist: "
